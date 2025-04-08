@@ -15,15 +15,17 @@ class report_ready_t(object):
     Sent _from_ nodes when they've finished initialization.
     """
 
-    __slots__ = ["id"]
+    __slots__ = ["id", "position"]
 
-    __typenames__ = ["int8_t"]
+    __typenames__ = ["int8_t", "int16_t"]
 
-    __dimensions__ = [None]
+    __dimensions__ = [None, [2]]
 
     def __init__(self):
         self.id = 0
         """ LCM Type: int8_t """
+        self.position = [ 0 for dim0 in range(2) ]
+        """ LCM Type: int16_t[2] """
 
     def encode(self):
         buf = BytesIO()
@@ -33,6 +35,7 @@ class report_ready_t(object):
 
     def _encode_one(self, buf):
         buf.write(struct.pack(">b", self.id))
+        buf.write(struct.pack('>2h', *self.position[:2]))
 
     @staticmethod
     def decode(data: bytes):
@@ -48,12 +51,13 @@ class report_ready_t(object):
     def _decode_one(buf):
         self = report_ready_t()
         self.id = struct.unpack(">b", buf.read(1))[0]
+        self.position = struct.unpack('>2h', buf.read(4))
         return self
 
     @staticmethod
     def _get_hash_recursive(parents):
         if report_ready_t in parents: return 0
-        tmphash = (0x68dd721286446c8) & 0xffffffffffffffff
+        tmphash = (0xb6de5cfb1fd39e02) & 0xffffffffffffffff
         tmphash  = (((tmphash<<1)&0xffffffffffffffff) + (tmphash>>63)) & 0xffffffffffffffff
         return tmphash
     _packed_fingerprint = None

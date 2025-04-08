@@ -8,7 +8,7 @@ from io import BytesIO
 import struct
 
 class moved_t(object):
-    """ Reports from 'it' when they move. """
+    """ Report move operations. This comes with the ID and a new position. """
 
     __slots__ = ["id", "new_position"]
 

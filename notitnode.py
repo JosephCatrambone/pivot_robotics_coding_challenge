@@ -32,6 +32,7 @@ class NotItNode(Node):
 
         msg = report_ready_t()
         msg.id = self.node_id
+        msg.position = self.current_position
         self.publish(Channels.REPORT_READY, msg)
         print(f"Node {self.node_id} online at {self.current_position}")
     

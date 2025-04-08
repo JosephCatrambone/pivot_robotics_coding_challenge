@@ -42,6 +42,9 @@ def main():
     if len(positions) % 2 != 0:
         print("Positions got an odd number of arguments and can't be mapped to (x,y) pairs.")
         sys.exit(-1)
+    
+    # If we need more than 254 hiders and 1 seeker we need to change the ID to a multi-byte int.
+    assert num_not_it < 254, "Only 255 total nodes are supported at this time."
 
     # Make a list of tuples for positions.
     positions = [p for p in zip(positions[0::2], positions[1::2])]
