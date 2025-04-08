@@ -12,10 +12,10 @@ import random
 from channels import Channels
 from messages import freeze_t, moved_t
 from movement_monitor import MovementMonitor
-from playernode import PlayerNode
+from notitnode import NotItNode
 
 
-class ItNode(PlayerNode):
+class ItNode(NotItNode):
     def __init__(self, node_id: int, start_position: tuple[int, int], board_shape: tuple[int, int], move_frequency: float):
         super().__init__(
             node_id=node_id, 

@@ -76,7 +76,7 @@ class GameNode(Node):
         # Find other nodes tagged by it.
         newly_tagged_nodes = self.movement_monitor.get_nodes_at_position(it_position)
         for t in newly_tagged_nodes:
-            if t in self.untagged_nodes:
+            if t in self.untagged_nodes and t != self.it_id:
                 msg = freeze_t()
                 msg.id = t
                 msg.position = it_position
