@@ -42,11 +42,8 @@ class ItNode(NotItNode):
         new_position = self.current_position
         nearest_node = self.find_nearest_node()
         if nearest_node is None:
-            logger.warning("Only untagged nodes found.  Trying to find the nearest tagged node.")
-            nearest_node = self.find_nearest_node(only_untagged=False)
-            if nearest_node is None:
-                logger.warning("No nodes found to seek. Moving at random.")
-                return super().choose_move()
+            logger.warning("No untagged nodes found to seek. Moving at random.")
+            return super().choose_move()
 
         # We have a nearest node. Convert dx and dy to be +1 or -1 each, then pick a direction at random.
         dx = ItNode.sign(nearest_node[0] - self.current_position[0])
@@ -64,10 +61,10 @@ class ItNode(NotItNode):
         if msg.id in self.untagged_nodes:
             self.untagged_nodes.remove(msg.id)
 
-    def find_nearest_node(self, only_untagged: bool = True) -> tuple[int, int] | None:
+    def find_nearest_node(self) -> tuple[int, int] | None:
         """Find the nearest _in bounds_ node to the current position and returns it.
         If there are no untagged IDs, returns None."""
-        if len(self.untagged_nodes) == 0 and only_untagged:
+        if len(self.untagged_nodes) == 0:
             return None
         nearest_distance = self.board_shape[0] + self.board_shape[1] + 1  # Max possible distance.
         nearest_position = (0, 0)

@@ -10,3 +10,4 @@ from .begin_t import begin_t as begin_t
 from .initialize_t import initialize_t as initialize_t
 from .moved_t import moved_t as moved_t
 from .gameover_t import gameover_t as gameover_t
+from .report_status_t import report_status_t as report_status_t

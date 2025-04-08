@@ -9,11 +9,12 @@ import time
 from logging import getLogger
 
 from channels import Channels
-from messages import begin_t, freeze_t, gameover_t, moved_t, report_ready_t
+from messages import freeze_t, moved_t, report_ready_t, report_status_t
 
 from node import Node
 
 
+NODE_SYNC_FREQUENCY = 5.0  # This does not need to be frequent. It's a sanity check to see if we missed messages.
 GAME_START_POLL_FREQUENCY = 0.1
 logger = getLogger()
 
@@ -26,11 +27,13 @@ class NotItNode(Node):
         self.current_position = start_position
         self.board_shape = board_shape
         self.move_frequency = move_frequency
+        self.sync_frequency = NODE_SYNC_FREQUENCY
+        self.last_node_sync = 0
         # It's tempting to put all of these into an enumeration of FSM like we have for the game node.
         # The reason we're not doing that is IT might not get the game start message and we don't want a rebroadcast
         # to flip all of the seekers from frozen to unfrozen, restarting the game.
         self.game_started = False
-        self.frozen = True
+        self.frozen = False
         self.game_over = False
 
     def position_in_bound(self, pos: tuple[int, int]) -> bool:
@@ -52,6 +55,7 @@ class NotItNode(Node):
     def run(self):
         while not self.game_started:
             time.sleep(GAME_START_POLL_FREQUENCY)
+            self.send_sync()
 
         self.frozen = False  # Unfreeze as we start the game.
 
@@ -61,6 +65,7 @@ class NotItNode(Node):
             if not self.frozen:
                 new_place = self.choose_move()
                 self.move_to(new_place)
+            self.send_sync()
     
     def tick(self):
         """Called once per loop inside the run cycle.  Called even if frozen."""
@@ -112,3 +117,16 @@ class NotItNode(Node):
         msg = freeze_t.decode(data)
         if msg.id == self.node_id:
             self.frozen = True
+
+    def send_sync(self):
+        # Randomly broadcast status so that we can sanity check our system state.
+        now = time.time()
+        if now - self.last_node_sync > self.sync_frequency:
+            logger.info(f"Node ID {self.node_id} reporting status update.")
+            msg = report_status_t()
+            msg.id = self.node_id
+            msg.position = self.current_position
+            msg.frozen = self.frozen
+            msg.game_started = self.game_started
+            self.publish(Channels.REPORT_STATUS, msg)
+            self.last_node_sync = now

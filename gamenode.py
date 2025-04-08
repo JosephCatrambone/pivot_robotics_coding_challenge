@@ -10,15 +10,17 @@ import lcm
 import threading
 import time
 from enum import Enum
+from logging import getLogger
 
 from channels import Channels
-from messages import begin_t, freeze_t, gameover_t, moved_t, report_ready_t
+from messages import begin_t, freeze_t, gameover_t, report_ready_t, report_status_t
 from movement_monitor import MovementMonitor
 from node import Node
 
 
 MIN_SLEEP_TIME = 0.0001  # Chosen for compatibility. A time of zero doesn't always yield.
 UI_REDRAW_DELAY = 0.1  # Time in seconds between drawing the TUI.
+logger = getLogger()
 
 
 class GameState(Enum):
@@ -44,6 +46,7 @@ class GameNode(Node):
 
     def on_start(self):
         self.subscribe(Channels.REPORT_READY, self.process_ready_report)
+        self.subscribe(Channels.REPORT_STATUS, self.process_status_update)
         self.movement_monitor.register_listeners(self.lc)
         self.node_reports = 0
     
@@ -78,10 +81,7 @@ class GameNode(Node):
         newly_tagged_nodes = self.movement_monitor.get_nodes_at_position(it_position)
         for t in newly_tagged_nodes:
             if t in self.untagged_nodes and t != self.it_id:
-                msg = freeze_t()
-                msg.id = t
-                msg.position = it_position
-                self.publish(Channels.FREEZE, msg)
+                self.send_freeze(t)
                 self.untagged_nodes.remove(t)
                 print(f"{t} was tagged at {it_position}")
     
@@ -118,6 +118,13 @@ class GameNode(Node):
         print("-"*20)
         print(f"Untagged: {self.untagged_nodes}")
 
+    # IPC Methods:
+
+    def send_freeze(self, node_id):
+        msg = freeze_t()
+        msg.id = node_id
+        self.publish(Channels.FREEZE, msg)
+
     def process_ready_report(self, channel, data):
         msg = report_ready_t.decode(data)
         self.node_reports += 1
@@ -130,7 +137,7 @@ class GameNode(Node):
             self.untagged_nodes.add(msg.id)
         
         # Check if we're ready.
-        if self.node_reports == self.node_count:
+        if self.node_reports == self.node_count+1:  # Plus one because we have the 'NotIt' count and the 'It'.
             self.game_state = GameState.RUNNING
             print(f"All {self.node_reports} nodes ({self.untagged_nodes}) and the 'it' node have reported -- starting game.")
             msg = begin_t()
@@ -140,6 +147,20 @@ class GameNode(Node):
         if len(self.untagged_nodes) == 0 and self.game_state == GameState.RUNNING:
             self.game_state = GameState.COMPLETE
 
-    def send_start_message(self, node_id):
+    def send_start_message(self):
         msg = begin_t()
         self.publish(Channels.BEGIN_GAME, msg)
+
+    def process_status_update(self, channel, data):
+        msg = report_status_t.decode(data)
+        # Perhaps we missed the message saying the game started:
+        if self.game_state == GameState.RUNNING and not msg.game_started:
+            logger.warning(f"Node ID {msg.id} missed the game start message.  Rebroadcasting.")
+            self.send_start_message()
+        if msg.frozen and msg.id in self.untagged_nodes:
+            logger.warning(f"Node ID {msg.id} incorrectly detected itself as tagged.  Recovering.")
+            self.send_freeze(msg.id)
+            self.untagged_nodes.remove(msg.id)
+        elif not msg.frozen and msg.id not in self.untagged_nodes:
+            logger.warning(f"Node ID {msg.id} did not receive the freeze message.  Resending.")
+            self.send_freeze(msg.id)

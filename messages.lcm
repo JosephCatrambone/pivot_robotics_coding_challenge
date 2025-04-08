@@ -6,11 +6,9 @@ package messages;
 // Server -> Clients
 //
 
-// Sent to a 'notit' when tagged.  It may have moved between when it last updated and when it got this.
-// The server is authoritative so it will move back to the position where it was tagged.
+// Sent to a 'notit' when tagged.
 struct freeze_t {
     int8_t id;
-    int16_t position[2];
 }
 
 // Sent when first allocating 'it' or 'notit' pieces. 
@@ -38,6 +36,14 @@ struct gameover_t {
 struct report_ready_t {
     int8_t id;
     int16_t position[2];
+}
+
+// Used for intermittent checkin to make sure everyone is on the same page.
+struct report_status_t {
+	int8_t id;
+	int16_t position[2];
+	boolean game_started;
+	boolean frozen;
 }
 
 // Report move operations. This comes with the ID and a new position.
