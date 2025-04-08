@@ -1,0 +1,46 @@
+package messages;
+
+// Build with: lcm-gen -p messages.lcm
+
+//
+// Server -> Clients
+//
+
+// Sent to a 'notit' when tagged.  It may have moved between when it last updated and when it got this.
+// The server is authoritative so it will move back to the position where it was tagged.
+struct freeze_t {
+    int16_t position[2];
+}
+
+// Sent to nodes when the game begins.
+struct begin_t {
+}
+
+// Sent when the game finishes.  Asks the nodes to deallocate themselves.
+struct gameover_t {
+}
+
+//
+// Clients -> Server
+//
+
+// Sent _from_ nodes when they've finished initialization.
+struct report_ready_t {
+    int8_t id;
+}
+
+// Sent when first allocating 'it' or 'notit' pieces. 
+// Pieces need to know the boundaries of the play space to avoid jumping out.
+// The GameNode will ignore the position information.
+struct initialize_t {
+    int8_t id;
+    int16_t position[2];
+    int16_t boundary[2];
+}
+
+// Reports from 'it' when they move.
+struct moved_t {
+    int8_t id;
+    int16_t new_position[2];
+}
+
