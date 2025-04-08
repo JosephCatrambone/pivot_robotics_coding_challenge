@@ -63,19 +63,21 @@ def run(width: int, height: int, not_it_positions: list[tuple[int, int]], it_pos
     Spin up the 'it' node.
     Wait for the main game node to terminate.
     """
+    it_id = len(not_it_positions)+1
+
     processes = list()
-    game_node = GameNode(board_shape=(width, height), node_count=len(not_it_positions))
+    game_node = GameNode(board_shape=(width, height), node_count=len(not_it_positions), it_id=it_id)
     main_node_process = multiprocessing.Process(target=game_node.launch_node, name="GameNode")
     processes.append(main_node_process)
     
     # Start up the 'not its'.
     for idx, pos in enumerate(not_it_positions):
-        not_it_node = NotItNode(node_id=idx, start_position=pos, board_shape=(width, height))
-        not_it_process = multiprocessing.Process(target=not_it_node.launch_node, name="Node{idx}")
+        not_it_node = NotItNode(node_id=idx, start_position=pos, board_shape=(width, height), move_frequency=1.0)
+        not_it_process = multiprocessing.Process(target=not_it_node.launch_node, name=f"Node{idx}")
         processes.append(not_it_process)
     
     # Finally, start up the seeker and wait until completion.
-    it_node = ItNode(node_id=len(not_it_positions)+1, start_position=it_position, board_shape=(width, height))
+    it_node = ItNode(node_id=it_id, start_position=it_position, board_shape=(width, height), move_frequency=0.5)
     it_process = multiprocessing.Process(target=it_node.launch_node, name="Seeker")
     processes.append(it_process)
     
