@@ -6,8 +6,6 @@
   - Keep track of the number of NotIt nodes which have been frozen. If all NotIt nodes are frozen, then end the game. 
 """
 
-import lcm
-import threading
 import time
 from enum import Enum
 from logging import getLogger
@@ -53,18 +51,18 @@ class GameNode(Node):
     def run(self):
         while self.game_state == GameState.STARTING:
             # Wait for nodes to come online:
-            time.sleep(0.1)
+            time.sleep(MIN_SLEEP_TIME)
 
         # Main game loop:
         while self.game_state == GameState.RUNNING:
-            time.sleep(0.001)
+            time.sleep(MIN_SLEEP_TIME)
             self.process_freezing()
             self.render_tui()
             self.check_gameover()
         
         # On-stop will be called automatically when we exit from the 'run' function.
         if self.game_state == GameState.COMPLETE:
-            print("All nodes tagged. Quitting.")
+            print("Game Complete")
     
     def on_stop(self):
         # We could make this the last step in the run.
@@ -80,7 +78,7 @@ class GameNode(Node):
         # Find other nodes tagged by it.
         newly_tagged_nodes = self.movement_monitor.get_nodes_at_position(it_position)
         for t in newly_tagged_nodes:
-            if t in self.untagged_nodes and t != self.it_id:
+            if t != self.it_id and t in self.untagged_nodes:
                 self.send_freeze(t)
                 self.untagged_nodes.remove(t)
                 print(f"{t} was tagged at {it_position}")
@@ -139,7 +137,8 @@ class GameNode(Node):
         # Check if we're ready.
         if self.node_reports == self.node_count+1:  # Plus one because we have the 'NotIt' count and the 'It'.
             self.game_state = GameState.RUNNING
-            print(f"All {self.node_reports} nodes ({self.untagged_nodes}) and the 'it' node have reported -- starting game.")
+            logger.info(f"All {self.node_reports} nodes ({self.untagged_nodes}) and the 'it' node have reported -- starting game.")
+            print("Game Start")
             msg = begin_t()
             self.publish(Channels.BEGIN_GAME, msg)
 
@@ -157,7 +156,9 @@ class GameNode(Node):
         if self.game_state == GameState.RUNNING and not msg.game_started:
             logger.warning(f"Node ID {msg.id} missed the game start message.  Rebroadcasting.")
             self.send_start_message()
+        # Or the node didn't get a freeze command:
         if msg.frozen and msg.id in self.untagged_nodes:
+            # This should not be possible but we want to monitor for odd message issues.
             logger.warning(f"Node ID {msg.id} incorrectly detected itself as tagged.  Recovering.")
             self.send_freeze(msg.id)
             self.untagged_nodes.remove(msg.id)
