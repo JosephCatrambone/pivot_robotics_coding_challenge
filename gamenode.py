@@ -54,7 +54,7 @@ class GameNode(Node):
         # Main game loop:
         while self.game_state == GameState.RUNNING:
             time.sleep(0.001)
-            self.handle_freezing()
+            self.process_freezing()
             self.render_tui()
             self.check_gameover()
         
@@ -68,7 +68,7 @@ class GameNode(Node):
         msg = gameover_t()
         self.publish(Channels.STOP_GAME, msg)
             
-    def handle_freezing(self):
+    def process_freezing(self):
         it_position = self.movement_monitor.get_node_position(self.it_id)
         # Since we wait for 'it' to register itself, position should never be none:
         assert it_position

@@ -12,6 +12,7 @@ class MovementMonitor:
         # But it's easier for book keeping if we have a map of ID -> position and Position -> IDs.
         self.node_to_position = dict()
         self.position_to_nodes = dict()
+        self.last_movers = set()  # Track which ones have given us move operations since the last update.
     
     def set_node_position(self, node_id: int, position: tuple[int, int], clear_previous: bool = True):
         if clear_previous:
@@ -25,6 +26,8 @@ class MovementMonitor:
         if position not in self.position_to_nodes:
             self.position_to_nodes[position] = list()
         self.position_to_nodes[position].append(node_id)
+        # And track that this has moved for reporting purposes:
+        self.last_movers.add(node_id)
     
     def get_nodes_at_position(self, position: tuple[int, int]) -> list[int]:
         if position not in self.position_to_nodes:
@@ -33,6 +36,12 @@ class MovementMonitor:
     
     def get_node_position(self, node_id: int) -> tuple[int, int] | None:
         return self.node_to_position.get(node_id)
+    
+    def get_last_movers(self) -> set[int]:
+        """Return a list of the last node_ids to have moved since the previous time this method was called."""
+        ret_last_movers = self.last_movers
+        self.last_movers = set()
+        return ret_last_movers
 
     # LC Interface:
     def register_listeners(self, lc_ref):

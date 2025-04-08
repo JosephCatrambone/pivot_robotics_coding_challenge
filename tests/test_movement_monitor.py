@@ -23,6 +23,14 @@ class TestMovementMonitor(unittest.TestCase):
         mm.set_node_position(1, (5, 6), clear_previous=False)
         mm.set_node_position(3, (0, 0), clear_previous=False)
         self.assertNotEqual(mm.get_node_position(1), mm.get_node_position(3))
+    
+    def test_last_move_update_list(self):
+        mm = MovementMonitor()
+        mm.set_node_position(1, (0, 0))
+        last_moved = mm.get_last_movers()
+        self.assertEqual(last_moved, {1})
+        last_moved = mm.get_last_movers()
+        self.assertEqual(last_moved, set())
 
 if __name__ == '__main__':
     unittest.main()

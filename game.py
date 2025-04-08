@@ -9,15 +9,9 @@ from itnode import ItNode
 from notitnode import NotItNode
 
 
-"""
-`python game.py --width N --height M --num-not-it P --positions x1 y1 x2 y2 ... x_it y_it`
+NOT_IT_MOVE_SPEED = 1.0
+IT_MOVE_SPEED = 0.5
 
-Example:
-
-`python game.py --width 20 --height 15 --num-not-it 2 3 5 10 12 0 0`
-
-(Initializes a 20x15 board with two "NotIt" agents at (3,5), (10,12), and one "It" agent at (0,0))
-"""
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--width", type=int, required=True)
@@ -25,6 +19,7 @@ parser.add_argument("--height", type=int, required=True)
 parser.add_argument("--num-not-it", type=int, required=True)
 parser.add_argument("--positions", type=int, nargs="*", required=False)  # Argparse does not allow something to be both named and positional
 parser.add_argument("posits", type=int, nargs="?", default=None)
+
 
 def main():
     """
@@ -75,12 +70,12 @@ def run(width: int, height: int, not_it_positions: list[tuple[int, int]], it_pos
     
     # Start up the 'not its'.
     for idx, pos in enumerate(not_it_positions):
-        not_it_node = NotItNode(node_id=idx, start_position=pos, board_shape=(width, height), move_frequency=1.0)
-        not_it_process = multiprocessing.Process(target=not_it_node.launch_node, name=f"Node{idx}")
+        not_it_node = NotItNode(node_id=idx, start_position=pos, board_shape=(width, height), move_frequency=NOT_IT_MOVE_SPEED)
+        not_it_process = multiprocessing.Process(target=not_it_node.launch_node, name=f"Hider{idx}")
         processes.append(not_it_process)
     
     # Finally, start up the seeker and wait until completion.
-    it_node = ItNode(node_id=it_id, start_position=it_position, board_shape=(width, height), move_frequency=0.5)
+    it_node = ItNode(node_id=it_id, start_position=it_position, board_shape=(width, height), move_frequency=IT_MOVE_SPEED)
     it_process = multiprocessing.Process(target=it_node.launch_node, name="Seeker")
     processes.append(it_process)
     
