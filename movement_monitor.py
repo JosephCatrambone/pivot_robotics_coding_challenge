@@ -1,4 +1,11 @@
-#!/usr/bin/env python -m unittest tests.test_movement_monitor.TestMovementMonitor
+"""
+A common tool which monitors for updates to movements.
+Used by the gamenode to track whether things have been tagged.
+Used by the itnode to move towards untagged targets.
+
+Test with `python -m unittest tests.test_movement_monitor.TestMovementMonitor`
+"""
+
 import copy
 
 from channels import Channels

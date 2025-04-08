@@ -1,6 +1,7 @@
 # game.py
 import multiprocessing
 import sys
+from logging import getLogger, DEBUG
 
 import argparse
 
@@ -11,6 +12,7 @@ from notitnode import NotItNode
 
 NOT_IT_MOVE_SPEED = 1.0
 IT_MOVE_SPEED = 0.5
+logger = getLogger()
 
 
 parser = argparse.ArgumentParser()
@@ -62,27 +64,36 @@ def run(width: int, height: int, not_it_positions: list[tuple[int, int]], it_pos
     Wait for the main game node to terminate.
     """
     it_id = len(not_it_positions)+1
-
     processes = list()
+
+    logger.info("Spawning GameNode")
     game_node = GameNode(board_shape=(width, height), node_count=len(not_it_positions), it_id=it_id)
     main_node_process = multiprocessing.Process(target=game_node.launch_node, name="GameNode")
     processes.append(main_node_process)
-    
+
+    # Spin up the seeker so it can listen as things report spawning.
+    logger.info("Spawning 'it' node")
+    it_node = ItNode(node_id=it_id, start_position=it_position, board_shape=(width, height), move_frequency=IT_MOVE_SPEED)
+    it_process = multiprocessing.Process(target=it_node.launch_node, name="Seeker")
+    processes.append(it_process)
+
     # Start up the 'not its'.
+    logger.info("Spawning 'not it' nodes")
     for idx, pos in enumerate(not_it_positions):
         not_it_node = NotItNode(node_id=idx, start_position=pos, board_shape=(width, height), move_frequency=NOT_IT_MOVE_SPEED)
         not_it_process = multiprocessing.Process(target=not_it_node.launch_node, name=f"Hider{idx}")
         processes.append(not_it_process)
-    
-    # Finally, start up the seeker and wait until completion.
-    it_node = ItNode(node_id=it_id, start_position=it_position, board_shape=(width, height), move_frequency=IT_MOVE_SPEED)
-    it_process = multiprocessing.Process(target=it_node.launch_node, name="Seeker")
-    processes.append(it_process)
-    
+
+    logger.info("Starting all processes")
     for p in processes:
         p.start()
 
+    logger.info("Awaiting GameNode completion")
     main_node_process.join()
+
+
+if __debug__:
+    logger.setLevel(DEBUG)
 
 
 if __name__ == "__main__":

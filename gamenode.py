@@ -18,6 +18,7 @@ from node import Node
 
 
 MIN_SLEEP_TIME = 0.0001  # Chosen for compatibility. A time of zero doesn't always yield.
+UI_REDRAW_DELAY = 0.1  # Time in seconds between drawing the TUI.
 
 
 class GameState(Enum):
@@ -33,11 +34,11 @@ class GameNode(Node):
         assert board_shape[0] > 0 and board_shape[1] > 0
         self.board_shape = board_shape
         self.movement_monitor = MovementMonitor()
-        self.node_count = node_count
+        self.node_count = node_count  # Includes the 'it' node.
         self.node_reports = 0  # Have all the workers chimed in?
         self.it_id = it_id  # Used to check when "it" has tagged a node.
         self.untagged_nodes = set()
-        self.ui_draw_delay = 0.5
+        self.ui_draw_delay = UI_REDRAW_DELAY
         self.last_ui_draw = 0
         self.game_state = GameState.STARTING
 
@@ -89,7 +90,10 @@ class GameNode(Node):
         Can call many times in quick succession and it will automatically discard attempts to redraw.
         Override and draw now with `force_draw_now = True`.
         """
-        if time.time() - self.last_ui_draw > self.ui_draw_delay:
+        if len(self.movement_monitor.get_last_movers()) == 0 and not force_draw_now:
+            return
+
+        if time.time() - self.last_ui_draw > self.ui_draw_delay or force_draw_now:
             self.last_ui_draw = time.time()
         else:
             return
@@ -128,10 +132,14 @@ class GameNode(Node):
         # Check if we're ready.
         if self.node_reports == self.node_count:
             self.game_state = GameState.RUNNING
-            print(f"All {self.node_reports} nodes ({self.untagged_nodes}) have reported -- starting game.")
+            print(f"All {self.node_reports} nodes ({self.untagged_nodes}) and the 'it' node have reported -- starting game.")
             msg = begin_t()
             self.publish(Channels.BEGIN_GAME, msg)
 
     def check_gameover(self):
         if len(self.untagged_nodes) == 0 and self.game_state == GameState.RUNNING:
             self.game_state = GameState.COMPLETE
+
+    def send_start_message(self, node_id):
+        msg = begin_t()
+        self.publish(Channels.BEGIN_GAME, msg)

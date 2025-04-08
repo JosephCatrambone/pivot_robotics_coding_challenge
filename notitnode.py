@@ -6,11 +6,16 @@
 """
 import random
 import time
+from logging import getLogger
 
 from channels import Channels
 from messages import begin_t, freeze_t, gameover_t, moved_t, report_ready_t
 
 from node import Node
+
+
+GAME_START_POLL_FREQUENCY = 0.1
+logger = getLogger()
 
 
 class NotItNode(Node):
@@ -20,9 +25,16 @@ class NotItNode(Node):
         self.node_id = node_id
         self.current_position = start_position
         self.board_shape = board_shape
-        self.frozen = True
-        self.quit = False
         self.move_frequency = move_frequency
+        # It's tempting to put all of these into an enumeration of FSM like we have for the game node.
+        # The reason we're not doing that is IT might not get the game start message and we don't want a rebroadcast
+        # to flip all of the seekers from frozen to unfrozen, restarting the game.
+        self.game_started = False
+        self.frozen = True
+        self.game_over = False
+
+    def position_in_bound(self, pos: tuple[int, int]) -> bool:
+        return pos[0] >= 0 and pos[0] < self.board_shape[0] and pos[1] >= 0 and pos[1] < self.board_shape[1]
 
     def on_start(self):
         # Associate our channels with a handler first, then report we're ready.
@@ -35,10 +47,15 @@ class NotItNode(Node):
         msg.id = self.node_id
         msg.position = self.current_position
         self.publish(Channels.REPORT_READY, msg)
-        print(f"Node {self.node_id} online at {self.current_position}")
+        logger.info(f"Node {self.node_id} online at {self.current_position}")
     
     def run(self):
-        while not self.quit:
+        while not self.game_started:
+            time.sleep(GAME_START_POLL_FREQUENCY)
+
+        self.frozen = False  # Unfreeze as we start the game.
+
+        while not self.game_over:
             time.sleep(self.move_frequency)
             self.tick()
             if not self.frozen:
@@ -54,17 +71,18 @@ class NotItNode(Node):
         Returns the next position that this node should assume.
         This is not the DELTA of the position but the absolute world position.
         """
+        next_position = self.current_position
         candidate_moves = list()
         for (dx, dy) in [(-1, 0), (0, -1), (1, 0), (0, 1)]:
             next_x = self.current_position[0] + dx
             next_y = self.current_position[1] + dy
-            if (next_x >= 0 and next_x < self.board_shape[0] and 
-                    next_y >= 0 and next_y < self.board_shape[1]):
-                candidate_moves.append((next_x, next_y))
+            candidate = (next_x, next_y)
+            if self.position_in_bound(candidate):
+                candidate_moves.append(candidate)
         if len(candidate_moves) == 0:
             # If the board is too small we may have no options.
-            print(f"Candidate moves list is empty for node id {self.node_id}.  Pos: {self.current_position}  Board shape: {self.board_shape}")
-            next_position = self.current_position
+            logger.warning(f"Candidate moves list is empty for node id {self.node_id}! "
+                           f"Pos: {self.current_position}  Board shape: {self.board_shape}")
         else:
             next_position = random.choice(candidate_moves)
         return next_position
@@ -80,10 +98,15 @@ class NotItNode(Node):
         pass
 
     def handle_begin(self, channel, data):
-        self.frozen = False
+        logger.info(f"Got start message: {self.node_id}")
+        self.game_started = True
+        # We do NOT set unfrozen here.
+        # The node will unfreeze itself as the game starts, but it's possible a message will get dropped and we'll
+        # need to re-broadcast the start game, so we don't want to unfreeze the tagged elements.
+        # self.frozen = False
 
     def handle_gameover(self, channel, data):
-        self.quit = True
+        self.game_over = True
 
     def handle_freeze(self, channel, data):
         msg = freeze_t.decode(data)
