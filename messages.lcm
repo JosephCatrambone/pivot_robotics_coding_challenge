@@ -9,6 +9,7 @@ package messages;
 // Sent to a 'notit' when tagged.  It may have moved between when it last updated and when it got this.
 // The server is authoritative so it will move back to the position where it was tagged.
 struct freeze_t {
+    int8_t id;
     int16_t position[2];
 }
 

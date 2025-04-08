@@ -17,13 +17,15 @@ class freeze_t(object):
     The server is authoritative so it will move back to the position where it was tagged.
     """
 
-    __slots__ = ["position"]
+    __slots__ = ["id", "position"]
 
-    __typenames__ = ["int16_t"]
+    __typenames__ = ["int8_t", "int16_t"]
 
-    __dimensions__ = [[2]]
+    __dimensions__ = [None, [2]]
 
     def __init__(self):
+        self.id = 0
+        """ LCM Type: int8_t """
         self.position = [ 0 for dim0 in range(2) ]
         """ LCM Type: int16_t[2] """
 
@@ -34,6 +36,7 @@ class freeze_t(object):
         return buf.getvalue()
 
     def _encode_one(self, buf):
+        buf.write(struct.pack(">b", self.id))
         buf.write(struct.pack('>2h', *self.position[:2]))
 
     @staticmethod
@@ -49,13 +52,14 @@ class freeze_t(object):
     @staticmethod
     def _decode_one(buf):
         self = freeze_t()
+        self.id = struct.unpack(">b", buf.read(1))[0]
         self.position = struct.unpack('>2h', buf.read(4))
         return self
 
     @staticmethod
     def _get_hash_recursive(parents):
         if freeze_t in parents: return 0
-        tmphash = (0x8a0a1e712e6fac13) & 0xffffffffffffffff
+        tmphash = (0xb6de5cfb1fd39e02) & 0xffffffffffffffff
         tmphash  = (((tmphash<<1)&0xffffffffffffffff) + (tmphash>>63)) & 0xffffffffffffffff
         return tmphash
     _packed_fingerprint = None
