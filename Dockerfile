@@ -13,7 +13,10 @@ COPY ./messages/*.py ./messages/
 COPY ./*.lcm ./
 COPY ./*.py ./
 
-CMD [ "python", "./game.py" ]
+# The parameters are concatenated with the run command when we specify entrypoint but NOT CMD.
+# If we want to be able to specify command-line arguments, use entrypoint:
+#CMD [ "python", "./game.py" ]
+ENTRYPOINT [ "python", "./game.py" ]
 
 # Build: docker build -t pivot-robotics-challenge .
 # Run: docker run -it --rm pivot-robotics-challenge
